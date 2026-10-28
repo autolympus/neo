@@ -23,7 +23,6 @@
 </head>
 <body class="min-h-screen p-3 md:p-6 flex flex-col items-center justify-start">
 
-    <!-- Main Container - UI เดิม 100% -->
     <div class="w-full max-w-xl bg-zinc-950 border border-zinc-800 rounded-2xl p-4 md:p-6 shadow-2xl ai-card-glow">
         
         <!-- Header -->
@@ -40,7 +39,7 @@
 
         <!-- Info Bar -->
         <div class="bg-blue-950/40 border border-blue-900/50 rounded-lg p-2 mb-3 text-[10px] text-blue-300">
-            📡 แหล่งข้อมูลราคาจริง: Frankfurter API (EUR/USD Real Feed)
+            📡 แหล่งข้อมูลราคาจริง: Frankfurter API v1 (EUR/USD Live Feed)
         </div>
 
         <!-- Buttons -->
@@ -103,15 +102,12 @@
             </div>
         </div>
 
-        <!-- Disclaimer -->
         <div class="mt-3 text-[9px] text-zinc-600 text-center border-t border-zinc-900 pt-2">
             ⚠️ SIMULATION ONLY: Real market data — No real orders are sent. Not financial advice.
         </div>
     </div>
 
-    <!-- Application Script (Fixed & Fully Functional) -->
     <script>
-        // ===== STATE =====
         const botState = {
             isRunning: false,
             soundEnabled: false,
@@ -127,9 +123,9 @@
         };
 
         let audioCtx = null;
-        const API_URL = 'https://api.frankfurter.dev/v2/latest?base=USD&symbols=EUR';
+        // เปลี่ยนมาใช้ API Endpoint v1 ที่เสถียรและใช้งานได้จริง
+        const API_URL = 'https://api.frankfurter.app/latest?from=USD&to=EUR';
 
-        // ===== INIT LOAD SAVED STATS =====
         try {
             const saved = localStorage.getItem('neoBeatStats');
             if (saved) {
@@ -138,7 +134,6 @@
             }
         } catch (e) {}
 
-        // ===== AUDIO SYSTEM =====
         function enableSound() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -167,7 +162,6 @@
             } catch (e) {}
         }
 
-        // ===== HELPER: LOGGING =====
         function log(type, message) {
             const container = document.getElementById('log-container');
             const count = document.getElementById('log-count');
@@ -180,7 +174,6 @@
             while (container.children.length > 50) container.removeChild(container.firstChild);
         }
 
-        // ===== HELPER: UPDATE SIGNAL DISPLAY (รองรับ BUY / SELL ตาม UI เดิม) =====
         function updateSignalDisplay(signal, reasonText) {
             const signalEl = document.getElementById('txt-signal');
             const reasonEl = document.getElementById('txt-reason');
@@ -214,7 +207,6 @@
             reasonEl.textContent = reasonText;
         }
 
-        // ===== HELPER: UPDATE STATS DISPLAY =====
         function updateStatsDisplay() {
             document.getElementById('stat-wl').textContent = `${botState.stats.wins} / ${botState.stats.losses}`;
             document.getElementById('stat-total').textContent = botState.stats.total;
@@ -227,7 +219,6 @@
             } catch (e) {}
         }
 
-        // ===== FETCH REAL MARKET DATA =====
         async function fetchMarketData() {
             if (!botState.isRunning) return;
             try {
@@ -235,8 +226,8 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
                 
-                if (data && data.conversion_rates && data.conversion_rates.EUR) {
-                    const eurUsd = parseFloat((1 / data.conversion_rates.EUR).toFixed(5));
+                if (data && data.rates && data.rates.EUR) {
+                    const eurUsd = parseFloat((1 / data.rates.EUR).toFixed(5));
                     
                     botState.previousPrice = botState.currentPrice;
                     botState.currentPrice = eurUsd;
@@ -254,7 +245,6 @@
 
                     log('MARKET', `EUR/USD Live Price: ${eurUsd.toFixed(5)}`);
 
-                    // วิเคราะห์ราคาจริงเมื่อไม่อยู่ในช่วงนับถอยหลังหรือถือออเดอร์
                     if (!botState.countdownTimer && !botState.activeTrade) {
                         analyzeMarket();
                     }
@@ -264,7 +254,6 @@
             }
         }
 
-        // ===== REAL MARKET ANALYSIS LOGIC =====
         function analyzeMarket() {
             if (botState.priceHistory.length < 3) {
                 updateSignalDisplay('HOLD', 'Collecting price data...');
@@ -281,7 +270,6 @@
 
             log('AI', `Analyzing — Trend: ${trendUp ? 'UP' : 'DOWN'}, Change: ${change.toFixed(4)}%`);
 
-            // เงื่อนไขตัดสินใจจากราคาจริง
             if (trendUp && change >= 0) {
                 startCountdown('BUY', 'Upward momentum confirmed from real feed');
             } else if (!trendUp && change < 0) {
@@ -291,7 +279,6 @@
             }
         }
 
-        // ===== COUNTDOWN SYSTEM =====
         function startCountdown(signal, reason) {
             if (botState.countdownTimer) return;
 
@@ -316,7 +303,6 @@
             }, 1000);
         }
 
-        // ===== EXECUTE SIMULATED TRADE =====
         function executeSimulatedTrade(signal) {
             const entryPrice = botState.currentPrice;
             botState.activeTrade = { signal: signal, entryPrice: entryPrice };
@@ -325,13 +311,11 @@
             log('TRADE', `Executed simulated ${signal} at real price: ${entryPrice.toFixed(5)}`);
             playBeep(1200, 0.3);
 
-            // ถือออเดอร์จำลอง 15 วินาทีเพื่อวัดผลเทียบกับราคาจริง
             setTimeout(() => {
                 evaluateTradeOutcome();
             }, 15000);
         }
 
-        // ===== EVALUATE OUTCOME =====
         function evaluateTradeOutcome() {
             if (!botState.activeTrade) return;
             const trade = botState.activeTrade;
@@ -360,7 +344,6 @@
             updateSignalDisplay('WAITING', 'Background worker monitoring live market structure...');
         }
 
-        // ===== TOGGLE BOT =====
         function toggleBot() {
             botState.isRunning = !botState.isRunning;
             const btn = document.getElementById('btn-toggle');
@@ -378,11 +361,7 @@
                 statusEl.className = "text-xs md:text-sm font-bold text-emerald-400";
                 
                 log('SYSTEM', 'Autonomous live background worker initialized.');
-                
-                // ดึงข้อมูลทันทีเมื่อกด Start
                 fetchMarketData();
-                
-                // ดึงราคาจริงต่อเนื่องทุกๆ 5 วินาที
                 botState.marketTimer = setInterval(fetchMarketData, 5000);
             } else {
                 btn.textContent = "START BOT";
@@ -406,7 +385,6 @@
             }
         }
 
-        // ===== RESET STATS =====
         function clearStats() {
             if (confirm("ต้องการรีเซ็ตสถิติทั้งหมดใช่หรือไม่?")) {
                 botState.stats = { wins: 0, losses: 0, total: 0 };
